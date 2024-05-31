@@ -1,34 +1,32 @@
+type Comment {
+    id: UUID!
+    author: String!
+    content: String!
+	postId: UUID
+    comments: [Comment!]
+}
+
 type Post {
-    id: ID!
+    id: UUID!
     title: String!
-    author: User!
+    author: String!
     content: String!
     commentable: Boolean!
     comments: [Comment!]
 }
 
-type Comment {
-    id: ID!
-    author: User!
-    content: String!
-    comments: [Comments!]
-}
-
-type User {
-    id: ID!
-    name: String!
-}
-
 input NewPost {
+    title: String!
     content: String!
     commentable: Boolean!
-    authorId: String!
+    author: String!
 }
 
 input NewComment {
     content: String!
-    authorId: String!
-    commentId: String!
+    author: String!
+    commentId: String
+    postId: String
 }
 
 type Mutation {
@@ -39,5 +37,6 @@ type Mutation {
 type Query {
     posts: [Post!]!
     post(id: String!): Post!
-    comments(post_id: String!): [Comments!]
 }
+
+scalar UUID
