@@ -35,8 +35,8 @@ func (r *Repo) CreatePost(ctx context.Context, newPost model.NewPost) (*model.Po
 	return post, nil
 }
 
-func (r *Repo) GetAllPosts(ctx context.Context) ([]*model.Post, error) {
-	return r.posts, nil
+func (r *Repo) GetAllPosts(ctx context.Context, offset *int, limit *int) ([]*model.Post, error) {
+	return r.posts[*offset:*limit], nil
 }
 
 func (r *Repo) GetPostById(ctx context.Context, id string) (*model.Post, error) {

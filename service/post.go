@@ -19,8 +19,8 @@ func (s *PostService) CreatePost(ctx context.Context, newPost model.NewPost) (*m
 	return s.repo.CreatePost(ctx, newPost)
 }
 
-func (s *PostService) GetAllPosts(ctx context.Context) ([]*model.Post, error) {
-	return s.repo.GetAllPosts(ctx)
+func (s *PostService) GetAllPosts(ctx context.Context, offset *int, limit *int) ([]*model.Post, error) {
+	return s.repo.GetAllPosts(ctx, offset, limit)
 }
 
 func (s *PostService) GetPostById(ctx context.Context, id string) (*model.Post, error) {

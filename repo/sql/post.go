@@ -25,10 +25,10 @@ func (r *PostRepo) CreatePost(ctx context.Context, newPost model.NewPost) (*mode
 	return post, nil
 }
 
-func (r *PostRepo) GetAllPosts(ctx context.Context) ([]*model.Post, error) {
+func (r *PostRepo) GetAllPosts(ctx context.Context, offset *int, limit *int) ([]*model.Post, error) {
 	var posts []*model.Post
-	query := "SELECT id, title, author, content, commentable FROM posts"
-	if err := r.db.SelectContext(ctx, &posts, query); err != nil {
+	query := "SELECT id, title, author, content, commentable FROM posts OFFSET $1 LIMIT $2"
+	if err := r.db.SelectContext(ctx, &posts, query, *offset, *limit); err != nil {
 		return nil, err
 	}
 

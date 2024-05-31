@@ -23,7 +23,7 @@ func NewCommentRepo(db *sqlx.DB) *CommentRepo {
 func (r *CommentRepo) CreateComment(ctx context.Context, newComment model.NewComment) (*model.Comment, error) {
 	if newComment.PostID != nil {
 		var commentable bool
-		query := "SELECT commentable FROM posts WHERE post_id = $1"
+		query := "SELECT commentable FROM posts WHERE id = $1"
 		if err := r.db.GetContext(ctx, &commentable, query, *newComment.PostID); err != nil {
 			return nil, err
 		}

@@ -21,8 +21,8 @@ func (r *mutationResolver) CreateComment(ctx context.Context, input model.NewCom
 }
 
 // Posts is the resolver for the posts field.
-func (r *queryResolver) Posts(ctx context.Context) ([]*model.Post, error) {
-	return r.service.GetAllPosts(ctx)
+func (r *queryResolver) Posts(ctx context.Context, offset *int, limit *int) ([]*model.Post, error) {
+	return r.service.GetAllPosts(ctx, offset, limit)
 }
 
 // Post is the resolver for the post field.

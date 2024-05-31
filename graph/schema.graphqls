@@ -3,7 +3,7 @@ type Comment {
     author: String!
     content: String!
 	postId: UUID
-    comments: [Comment!]
+    comments(offset: Int = 0, limit: Int = 10): [Comment!]
 }
 
 type Post {
@@ -12,7 +12,7 @@ type Post {
     author: String!
     content: String!
     commentable: Boolean!
-    comments: [Comment!]
+    comments(offset: Int = 0, limit: Int = 10): [Comment!]
 }
 
 input NewPost {
@@ -35,7 +35,7 @@ type Mutation {
 }
 
 type Query {
-    posts: [Post!]!
+    posts(offset: Int = 0, limit: Int = 10): [Post!]!
     post(id: String!): Post!
 }
 

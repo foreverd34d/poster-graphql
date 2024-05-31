@@ -9,7 +9,7 @@ import (
 
 type Post interface {
 	CreatePost(ctx context.Context, newPost model.NewPost) (*model.Post, error)
-	GetAllPosts(ctx context.Context) ([]*model.Post, error)
+	GetAllPosts(ctx context.Context, offset *int, limit *int) ([]*model.Post, error)
 	GetPostById(ctx context.Context, id string) (*model.Post, error)
 }
 
