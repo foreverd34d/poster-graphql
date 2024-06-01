@@ -82,15 +82,32 @@ func retrieveReplies(ctx context.Context, db *sqlx.DB, query string, args ...any
 	return replies, nil
 }
 
-// func retrieveRepliesAsync(ctx context.Context, db *sqlx.DB, parentCommentId string, ch chan *model.Comment) {
+// type chComment struct {
+// 	idx  int
+// 	comm *model.Comment
+// }
+
+// func retrieveRepliesAsync(ctx context.Context, db *sqlx.DB, parentCommentId string, ch chan chComment) {
 // 	var replies []*model.Comment
 // 	query := "SELECT * FROM comment WHERE parent_comment_id = $1"
 // 	if err := db.SelectContext(ctx, &replies, query, parentCommentId); err != nil && err != sql.ErrNoRows {
 // 		return
 // 	}
 //
-// 	replCh := make(chan *model.Comment, len(replies))
+// 	var wg sync.WaitGroup
+// 	replCh := make(chan chComment, len(replies))
 // 	for i := range replies {
-// 		go retrieveRepliesAsync(ctx, db, replies[i].ID.String(), replCh)
+// 		wg.Add(1)
+// 		id := replies[i].ID.String()
+// 		go func() {
+// 			defer wg.Done()
+// 			retrieveRepliesAsync(ctx, db, id, replCh)
+// 		}()
+// 	}
+//
+// 	wg.Wait()
+// 	for range replies {
+// 		reply := <-replCh
+// 		replies[reply.idx] = reply.comm
 // 	}
 // }

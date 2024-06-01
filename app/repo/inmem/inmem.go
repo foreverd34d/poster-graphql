@@ -36,7 +36,19 @@ func (r *Repo) CreatePost(ctx context.Context, newPost model.NewPost) (*model.Po
 }
 
 func (r *Repo) GetAllPosts(ctx context.Context, offset *int, limit *int) ([]*model.Post, error) {
-	return r.posts[*offset:*limit], nil
+	off := 0
+	if offset != nil && *offset < len(r.posts) {
+		off = *offset
+	}
+	lim := len(r.posts)
+	if limit != nil && *limit <= len(r.posts) {
+		lim = *limit
+	}
+
+	if len(r.posts) == 0 {
+		return r.posts, nil
+	}
+	return r.posts[off:lim], nil
 }
 
 func (r *Repo) GetPostById(ctx context.Context, id string) (*model.Post, error) {
