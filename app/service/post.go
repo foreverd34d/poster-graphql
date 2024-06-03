@@ -7,22 +7,22 @@ import (
 	"github.com/foreverd34d/poster-graphql/repo"
 )
 
-type PostService struct {
+type postService struct {
 	repo repo.Post
 }
 
-func NewPostService(repo repo.Post) *PostService {
-	return &PostService{repo}
+func NewPostService(repo repo.Post) *postService {
+	return &postService{repo}
 }
 
-func (s *PostService) CreatePost(ctx context.Context, newPost model.NewPost) (*model.Post, error) {
+func (s *postService) CreatePost(ctx context.Context, newPost model.NewPost) (*model.Post, error) {
 	return s.repo.CreatePost(ctx, newPost)
 }
 
-func (s *PostService) GetAllPosts(ctx context.Context, offset *int, limit *int) ([]*model.Post, error) {
+func (s *postService) GetAllPosts(ctx context.Context, offset *int, limit *int) ([]*model.Post, error) {
 	return s.repo.GetAllPosts(ctx, offset, limit)
 }
 
-func (s *PostService) GetPostById(ctx context.Context, id string) (*model.Post, error) {
-	return s.repo.GetPostById(ctx, id)
+func (s *postService) GetPostByID(ctx context.Context, id string) (*model.Post, error) {
+	return s.repo.GetPostByID(ctx, id)
 }

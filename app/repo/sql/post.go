@@ -8,15 +8,15 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-type PostRepo struct {
+type postRepo struct {
 	db *sqlx.DB
 }
 
-func NewPostRepo(db *sqlx.DB) *PostRepo {
-	return &PostRepo{db}
+func NewPostRepo(db *sqlx.DB) *postRepo {
+	return &postRepo{db}
 }
 
-func (r *PostRepo) CreatePost(ctx context.Context, newPost model.NewPost) (*model.Post, error) {
+func (r *postRepo) CreatePost(ctx context.Context, newPost model.NewPost) (*model.Post, error) {
 	post := new(model.Post)
 	query := "INSERT INTO posts (title, author, content, commentable) VALUES ($1, $2, $3, $4) RETURNING id, title, author, content, commentable"
 	if err := r.db.GetContext(ctx, post, query, newPost.Title, newPost.Author, newPost.Content, newPost.Commentable); err != nil {
@@ -25,7 +25,7 @@ func (r *PostRepo) CreatePost(ctx context.Context, newPost model.NewPost) (*mode
 	return post, nil
 }
 
-func (r *PostRepo) GetAllPosts(ctx context.Context, offset *int, limit *int) ([]*model.Post, error) {
+func (r *postRepo) GetAllPosts(ctx context.Context, offset *int, limit *int) ([]*model.Post, error) {
 	var posts []*model.Post
 	query := "SELECT id, title, author, content, commentable FROM posts OFFSET $1 LIMIT $2"
 	if err := r.db.SelectContext(ctx, &posts, query, *offset, *limit); err != nil {
@@ -45,7 +45,7 @@ func (r *PostRepo) GetAllPosts(ctx context.Context, offset *int, limit *int) ([]
 	return posts, nil
 }
 
-func (r *PostRepo) GetPostById(ctx context.Context, id string) (*model.Post, error) {
+func (r *postRepo) GetPostByID(ctx context.Context, id string) (*model.Post, error) {
 	post := new(model.Post)
 	postQuery := "SELECT * FROM posts WHERE id = $1"
 	if err := r.db.GetContext(ctx, post, postQuery, id); err != nil {

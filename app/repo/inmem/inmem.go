@@ -15,15 +15,15 @@ var (
 	ErrBadRequest = errors.New("bad request")
 )
 
-type Repo struct {
+type inmemRepo struct {
 	posts []*model.Post
 }
 
-func NewRepo() *Repo {
-	return &Repo{make([]*model.Post, 0)}
+func NewRepo() *inmemRepo {
+	return &inmemRepo{make([]*model.Post, 0)}
 }
 
-func (r *Repo) CreatePost(ctx context.Context, newPost model.NewPost) (*model.Post, error) {
+func (r *inmemRepo) CreatePost(ctx context.Context, newPost model.NewPost) (*model.Post, error) {
 	post := &model.Post{
 		ID: uuid.New(),
 		Title: newPost.Title,
@@ -35,7 +35,7 @@ func (r *Repo) CreatePost(ctx context.Context, newPost model.NewPost) (*model.Po
 	return post, nil
 }
 
-func (r *Repo) GetAllPosts(ctx context.Context, offset *int, limit *int) ([]*model.Post, error) {
+func (r *inmemRepo) GetAllPosts(ctx context.Context, offset *int, limit *int) ([]*model.Post, error) {
 	off := 0
 	if offset != nil && *offset < len(r.posts) {
 		off = *offset
@@ -51,7 +51,7 @@ func (r *Repo) GetAllPosts(ctx context.Context, offset *int, limit *int) ([]*mod
 	return r.posts[off:lim], nil
 }
 
-func (r *Repo) GetPostById(ctx context.Context, id string) (*model.Post, error) {
+func (r *inmemRepo) GetPostByID(ctx context.Context, id string) (*model.Post, error) {
 	idx := slices.IndexFunc(r.posts, func(post *model.Post) bool {
 		return post.ID.String() == id
 	})
@@ -61,7 +61,7 @@ func (r *Repo) GetPostById(ctx context.Context, id string) (*model.Post, error) 
 	return r.posts[idx], nil
 }
 
-func (r *Repo) CreateComment(ctx context.Context, newComment model.NewComment) (*model.Comment, error) {
+func (r *inmemRepo) CreateComment(ctx context.Context, newComment model.NewComment) (*model.Comment, error) {
 	comm := &model.Comment{
 		ID: uuid.New(),
 		Author: newComment.Author,

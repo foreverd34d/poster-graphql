@@ -8,7 +8,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-type CommentRepo struct {
+type commentRepo struct {
 	db *sqlx.DB
 }
 
@@ -16,11 +16,11 @@ var (
 	ErrNotCommentable = errors.New("the post is not commentable")
 )
 
-func NewCommentRepo(db *sqlx.DB) *CommentRepo {
-	return &CommentRepo{db}
+func NewCommentRepo(db *sqlx.DB) *commentRepo {
+	return &commentRepo{db}
 }
 
-func (r *CommentRepo) CreateComment(ctx context.Context, newComment model.NewComment) (*model.Comment, error) {
+func (r *commentRepo) CreateComment(ctx context.Context, newComment model.NewComment) (*model.Comment, error) {
 	if newComment.PostID != nil {
 		var commentable bool
 		query := "SELECT commentable FROM posts WHERE id = $1"
