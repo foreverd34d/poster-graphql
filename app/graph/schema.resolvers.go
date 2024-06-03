@@ -10,6 +10,22 @@ import (
 	"github.com/foreverd34d/poster-graphql/graph/model"
 )
 
+// Comments is the resolver for the comments field.
+func (r *commentResolver) Comments(ctx context.Context, obj *model.Comment, offset *int, limit *int) ([]*model.Comment, error) {
+	if len(obj.Comments) == 0 {
+		return obj.Comments, nil
+	}
+	off := 0
+	if offset != nil && *offset < len(obj.Comments) {
+		off = *offset
+	}
+	lim := len(obj.Comments)
+	if limit != nil && *limit <= len(obj.Comments) {
+		lim = *limit
+	}
+	return obj.Comments[off:lim], nil
+}
+
 // CreatePost is the resolver for the createPost field.
 func (r *mutationResolver) CreatePost(ctx context.Context, input model.NewPost) (*model.Post, error) {
 	return r.service.CreatePost(ctx, input)
@@ -18,6 +34,22 @@ func (r *mutationResolver) CreatePost(ctx context.Context, input model.NewPost) 
 // CreateComment is the resolver for the createComment field.
 func (r *mutationResolver) CreateComment(ctx context.Context, input model.NewComment) (*model.Comment, error) {
 	return r.service.CreateComment(ctx, input)
+}
+
+// Comments is the resolver for the comments field.
+func (r *postResolver) Comments(ctx context.Context, obj *model.Post, offset *int, limit *int) ([]*model.Comment, error) {
+	if len(obj.Comments) == 0 {
+		return obj.Comments, nil
+	}
+	off := 0
+	if offset != nil && *offset < len(obj.Comments) {
+		off = *offset
+	}
+	lim := len(obj.Comments)
+	if limit != nil && *limit <= len(obj.Comments) {
+		lim = *limit
+	}
+	return obj.Comments[off:lim], nil
 }
 
 // Posts is the resolver for the posts field.
@@ -30,11 +62,19 @@ func (r *queryResolver) Post(ctx context.Context, id string) (*model.Post, error
 	return r.service.GetPostById(ctx, id)
 }
 
+// Comment returns CommentResolver implementation.
+func (r *Resolver) Comment() CommentResolver { return &commentResolver{r} }
+
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
+
+// Post returns PostResolver implementation.
+func (r *Resolver) Post() PostResolver { return &postResolver{r} }
 
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
+type commentResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
+type postResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }

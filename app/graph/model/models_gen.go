@@ -2,18 +2,6 @@
 
 package model
 
-import (
-	"github.com/google/uuid"
-)
-
-type Comment struct {
-	ID       uuid.UUID  `json:"id"`
-	Author   string     `json:"author"`
-	Content  string     `json:"content"`
-	PostID   *uuid.UUID `json:"postId,omitempty" db:"post_id"`
-	Comments []*Comment `json:"comments,omitempty"`
-}
-
 type Mutation struct {
 }
 
@@ -29,15 +17,6 @@ type NewPost struct {
 	Content     string `json:"content"`
 	Commentable bool   `json:"commentable"`
 	Author      string `json:"author"`
-}
-
-type Post struct {
-	ID          uuid.UUID  `json:"id"`
-	Title       string     `json:"title"`
-	Author      string     `json:"author"`
-	Content     string     `json:"content"`
-	Commentable bool       `json:"commentable"`
-	Comments    []*Comment `json:"comments,omitempty"`
 }
 
 type Query struct {
