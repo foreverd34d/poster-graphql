@@ -34,7 +34,7 @@ type Service struct {
 // NewService creates an instance of service which utilize passed repository.
 func NewService(repo *repo.Repo) *Service {
 	return &Service{
-		Post: NewPostService(repo),
+		Post:    NewPostService(repo),
 		Comment: NewCommentService(repo),
 	}
 }

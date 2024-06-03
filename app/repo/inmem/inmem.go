@@ -11,8 +11,8 @@ import (
 
 var (
 	ErrNotCommentable = errors.New("the post is not commentable")
-	ErrNotFound = errors.New("not found")
-	ErrBadRequest = errors.New("bad request")
+	ErrNotFound       = errors.New("not found")
+	ErrBadRequest     = errors.New("bad request")
 )
 
 type inmemRepo struct {
@@ -25,10 +25,10 @@ func NewRepo() *inmemRepo {
 
 func (r *inmemRepo) CreatePost(ctx context.Context, newPost model.NewPost) (*model.Post, error) {
 	post := &model.Post{
-		ID: uuid.New(),
-		Title: newPost.Title,
-		Author: newPost.Author,
-		Content: newPost.Content,
+		ID:          uuid.New(),
+		Title:       newPost.Title,
+		Author:      newPost.Author,
+		Content:     newPost.Content,
 		Commentable: newPost.Commentable,
 	}
 	r.posts = append(r.posts, post)
@@ -63,8 +63,8 @@ func (r *inmemRepo) GetPostByID(ctx context.Context, id string) (*model.Post, er
 
 func (r *inmemRepo) CreateComment(ctx context.Context, newComment model.NewComment) (*model.Comment, error) {
 	comm := &model.Comment{
-		ID: uuid.New(),
-		Author: newComment.Author,
+		ID:      uuid.New(),
+		Author:  newComment.Author,
 		Content: newComment.Content,
 	}
 
@@ -80,8 +80,13 @@ func (r *inmemRepo) CreateComment(ctx context.Context, newComment model.NewComme
 		}
 		r.posts[idx].Comments = append(r.posts[idx].Comments, comm)
 	} else if newComment.CommentID != nil {
+		ch := make(chan chComments, len(r.posts))
 		for i := range r.posts {
-			r.posts[i].Comments = insertReply(r.posts[i].Comments, comm, *newComment.CommentID)
+			go insertReply(r.posts[i].Comments, comm, *newComment.CommentID, i, ch)
+		}
+		for range r.posts {
+			post := <-ch
+			r.posts[post.idx].Comments = post.comms
 		}
 	} else {
 		return nil, ErrBadRequest
@@ -90,18 +95,31 @@ func (r *inmemRepo) CreateComment(ctx context.Context, newComment model.NewComme
 	return comm, nil
 }
 
-func insertReply(comms []*model.Comment, newComm *model.Comment, commId string) []*model.Comment {
+type chComments struct {
+	idx   int
+	comms []*model.Comment
+}
+
+func insertReply(comms []*model.Comment, newComm *model.Comment, commId string, idx int, ch chan chComments) {
 	if comms == nil {
-		return nil
+		ch <- chComments{idx, nil}
+		return
 	}
 
+	repliesCh := make(chan chComments, len(comms))
 	for i := range comms {
 		if comms[i].ID.String() == commId {
 			comms[i].Comments = append(comms[i].Comments, newComm)
+			repliesCh <- chComments{i, comms[i].Comments}
 		} else {
-			comms[i].Comments = insertReply(comms[i].Comments, newComm, commId)
+			go insertReply(comms[i].Comments, newComm, commId, i, repliesCh)
 		}
 	}
 
-	return comms
+	for range comms {
+		reply := <-repliesCh
+		comms[reply.idx].Comments = reply.comms
+	}
+
+	ch <- chComments{idx, comms}
 }

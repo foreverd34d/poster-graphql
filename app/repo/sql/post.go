@@ -33,7 +33,7 @@ func (r *postRepo) GetAllPosts(ctx context.Context, offset *int, limit *int) ([]
 	}
 
 	commsQuery := `SELECT id, author, content, post_id FROM comments WHERE post_id = $1`
-	ch := make(chan chComment, len(posts))
+	ch := make(chan chComments, len(posts))
 	for i := range posts {
 		go retrieveReplies(ctx, r.db, i, ch, commsQuery, posts[i].ID)
 	}
@@ -53,41 +53,41 @@ func (r *postRepo) GetPostByID(ctx context.Context, id string) (*model.Post, err
 	}
 
 	commsQuery := `SELECT id, author, content, post_id FROM comments WHERE post_id = $1`
-	ch := make(chan chComment)
+	ch := make(chan chComments)
 	retrieveReplies(ctx, r.db, 0, ch, commsQuery, id)
-	comments := <- ch
+	comments := <-ch
 	post.Comments = comments.comms
 
 	return post, nil
 }
 
-type chComment struct {
-	idx  int
+type chComments struct {
+	idx   int
 	comms []*model.Comment
 }
 
-func retrieveReplies(ctx context.Context, db *sqlx.DB, replyIdx int, ch chan chComment, query string, args ...any) {
+func retrieveReplies(ctx context.Context, db *sqlx.DB, replyIdx int, ch chan chComments, query string, args ...any) {
 	var replies []*model.Comment
 	if err := db.SelectContext(ctx, &replies, query, args...); err != nil && err != sql.ErrNoRows {
-		ch <- chComment{replyIdx, nil}
+		ch <- chComments{replyIdx, nil}
 		return
 	}
 
 	if len(replies) == 0 {
-		ch <- chComment{replyIdx, nil}
+		ch <- chComments{replyIdx, nil}
 		return
 	}
 
-	replCh := make(chan chComment, len(replies))
+	repliesCh := make(chan chComments, len(replies))
 	for i := range replies {
 		replQuery := "SELECT * FROM comment WHERE parent_comment_id = $1"
-		go retrieveReplies(ctx, db, i, replCh, replQuery, replies[i].ID.String())
+		go retrieveReplies(ctx, db, i, repliesCh, replQuery, replies[i].ID.String())
 	}
 
 	for range replies {
-		reply := <-replCh
+		reply := <-repliesCh
 		replies[reply.idx].Comments = reply.comms
 	}
 
-	ch <- chComment{replyIdx, replies}
+	ch <- chComments{replyIdx, replies}
 }

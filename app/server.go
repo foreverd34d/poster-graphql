@@ -28,7 +28,7 @@ func main() {
 	if dbConnection == "" {
 		r = repo.NewInMemRepo()
 	} else {
-		db, err  := sqlx.Connect("postgres", dbConnection)
+		db, err := sqlx.Connect("postgres", dbConnection)
 		if err != nil {
 			log.Fatalln(err)
 		}

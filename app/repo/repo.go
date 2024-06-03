@@ -38,7 +38,7 @@ type Repo struct {
 // NewSqlRepo returns an instance of SQL-based database.
 func NewSqlRepo(db *sqlx.DB) *Repo {
 	return &Repo{
-		Post: sql.NewPostRepo(db),
+		Post:    sql.NewPostRepo(db),
 		Comment: sql.NewCommentRepo(db),
 	}
 }
@@ -47,7 +47,7 @@ func NewSqlRepo(db *sqlx.DB) *Repo {
 func NewInMemRepo() *Repo {
 	repo := inmem.NewRepo()
 	return &Repo{
-		Post: repo,
+		Post:    repo,
 		Comment: repo,
 	}
 }
