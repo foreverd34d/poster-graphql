@@ -32,16 +32,14 @@ func (r *PostRepo) GetAllPosts(ctx context.Context, offset *int, limit *int) ([]
 		return nil, err
 	}
 
-	var err error
 	commsQuery := `SELECT id, author, content, post_id FROM comments WHERE post_id = $1`
+	ch := make(chan chComment, len(posts))
 	for i := range posts {
-		posts[i].Comments, err = retrieveReplies(ctx, r.db, commsQuery, posts[i].ID)
-		if err != nil {
-			return nil, err
-		}
+		go retrieveReplies(ctx, r.db, i, ch, commsQuery, posts[i].ID)
 	}
-	if err != nil {
-		return nil, err
+	for range posts {
+		comment := <-ch
+		posts[comment.idx].Comments = comment.comms
 	}
 
 	return posts, nil
@@ -54,60 +52,42 @@ func (r *PostRepo) GetPostById(ctx context.Context, id string) (*model.Post, err
 		return nil, err
 	}
 
-	var err error
 	commsQuery := `SELECT id, author, content, post_id FROM comments WHERE post_id = $1`
-	post.Comments, err = retrieveReplies(ctx, r.db, commsQuery, id)
-	if err != nil {
-		return nil, err
-	}
+	ch := make(chan chComment)
+	retrieveReplies(ctx, r.db, 0, ch, commsQuery, id)
+	comments := <- ch
+	post.Comments = comments.comms
 
 	return post, nil
 }
 
-func retrieveReplies(ctx context.Context, db *sqlx.DB, query string, args ...any) ([]*model.Comment, error) {
-	var replies []*model.Comment
-	if err := db.SelectContext(ctx, &replies, query, args...); err != nil && err != sql.ErrNoRows {
-		return nil, err
-	}
-
-	for i := range replies {
-		var err error
-		replQuery := `SELECT id, author, content, post_id FROM comments WHERE parent_comment_id = $1`
-		replies[i].Comments, err = retrieveReplies(ctx, db, replQuery, replies[i].ID.String())
-		if err != nil && err != sql.ErrNoRows {
-			return nil, err
-		}
-	}
-
-	return replies, nil
+type chComment struct {
+	idx  int
+	comms []*model.Comment
 }
 
-// type chComment struct {
-// 	idx  int
-// 	comm *model.Comment
-// }
+func retrieveReplies(ctx context.Context, db *sqlx.DB, replyIdx int, ch chan chComment, query string, args ...any) {
+	var replies []*model.Comment
+	if err := db.SelectContext(ctx, &replies, query, args...); err != nil && err != sql.ErrNoRows {
+		ch <- chComment{replyIdx, nil}
+		return
+	}
 
-// func retrieveRepliesAsync(ctx context.Context, db *sqlx.DB, parentCommentId string, ch chan chComment) {
-// 	var replies []*model.Comment
-// 	query := "SELECT * FROM comment WHERE parent_comment_id = $1"
-// 	if err := db.SelectContext(ctx, &replies, query, parentCommentId); err != nil && err != sql.ErrNoRows {
-// 		return
-// 	}
-//
-// 	var wg sync.WaitGroup
-// 	replCh := make(chan chComment, len(replies))
-// 	for i := range replies {
-// 		wg.Add(1)
-// 		id := replies[i].ID.String()
-// 		go func() {
-// 			defer wg.Done()
-// 			retrieveRepliesAsync(ctx, db, id, replCh)
-// 		}()
-// 	}
-//
-// 	wg.Wait()
-// 	for range replies {
-// 		reply := <-replCh
-// 		replies[reply.idx] = reply.comm
-// 	}
-// }
+	if len(replies) == 0 {
+		ch <- chComment{replyIdx, nil}
+		return
+	}
+
+	replCh := make(chan chComment, len(replies))
+	for i := range replies {
+		replQuery := "SELECT * FROM comment WHERE parent_comment_id = $1"
+		go retrieveReplies(ctx, db, i, replCh, replQuery, replies[i].ID.String())
+	}
+
+	for range replies {
+		reply := <-replCh
+		replies[reply.idx].Comments = reply.comms
+	}
+
+	ch <- chComment{replyIdx, replies}
+}
