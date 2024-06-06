@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"sync"
 
 	"github.com/foreverd34d/poster-graphql/graph/model"
 	"github.com/google/uuid"
@@ -80,14 +81,15 @@ func (r *inmemRepo) CreateComment(ctx context.Context, newComment model.NewComme
 		}
 		r.posts[idx].Comments = append(r.posts[idx].Comments, comm)
 	} else if newComment.CommentID != nil {
-		ch := make(chan chComments, len(r.posts))
-		for i := range r.posts {
-			go insertReply(r.posts[i].Comments, comm, *newComment.CommentID, i, ch)
+		var wg sync.WaitGroup
+		wg.Add(len(r.posts))
+		for _, post := range r.posts {
+			go func(p *model.Post) {
+				defer wg.Done()
+				insertComment(p.Comments, comm, *newComment.CommentID)
+			}(post)
 		}
-		for range r.posts {
-			post := <-ch
-			r.posts[post.idx].Comments = post.comms
-		}
+		wg.Wait()
 	} else {
 		return nil, ErrBadRequest
 	}
@@ -95,31 +97,17 @@ func (r *inmemRepo) CreateComment(ctx context.Context, newComment model.NewComme
 	return comm, nil
 }
 
-type chComments struct {
-	idx   int
-	comms []*model.Comment
-}
-
-func insertReply(comms []*model.Comment, newComm *model.Comment, commId string, idx int, ch chan chComments) {
-	if comms == nil {
-		ch <- chComments{idx, nil}
+func insertComment(comments []*model.Comment, newComment *model.Comment, parentId string) {
+	if comments == nil {
 		return
 	}
 
-	repliesCh := make(chan chComments, len(comms))
-	for i := range comms {
-		if comms[i].ID.String() == commId {
-			comms[i].Comments = append(comms[i].Comments, newComm)
-			repliesCh <- chComments{i, comms[i].Comments}
+	for _, comment := range comments {
+		if comment.ID.String() == parentId {
+			comment.Comments = append(comment.Comments, newComment)
+			return
 		} else {
-			go insertReply(comms[i].Comments, newComm, commId, i, repliesCh)
+			go insertComment(comment.Comments, newComment, parentId)
 		}
 	}
-
-	for range comms {
-		reply := <-repliesCh
-		comms[reply.idx].Comments = reply.comms
-	}
-
-	ch <- chComments{idx, comms}
 }

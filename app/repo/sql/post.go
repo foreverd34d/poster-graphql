@@ -3,6 +3,7 @@ package sql
 import (
 	"context"
 	"database/sql"
+	"sync"
 
 	"github.com/foreverd34d/poster-graphql/graph/model"
 	"github.com/jmoiron/sqlx"
@@ -32,15 +33,18 @@ func (r *postRepo) GetAllPosts(ctx context.Context, offset *int, limit *int) ([]
 		return nil, err
 	}
 
-	commsQuery := `SELECT id, author, content, post_id FROM comments WHERE post_id = $1`
-	ch := make(chan chComments, len(posts))
-	for i := range posts {
-		go retrieveReplies(ctx, r.db, i, ch, commsQuery, posts[i].ID)
+	commsQuery := "SELECT id, author, content, post_id FROM comments WHERE post_id = $1"
+	var wg sync.WaitGroup
+	wg.Add(len(posts))
+	for _, post := range posts {
+		go func(p *model.Post) {
+			defer wg.Done()
+			for comment := range retrieveComments(ctx, r.db, commsQuery, p.ID) {
+				p.Comments = append(p.Comments, comment)
+			}
+		}(post)
 	}
-	for range posts {
-		comment := <-ch
-		posts[comment.idx].Comments = comment.comms
-	}
+	wg.Wait()
 
 	return posts, nil
 }
@@ -52,42 +56,36 @@ func (r *postRepo) GetPostByID(ctx context.Context, id string) (*model.Post, err
 		return nil, err
 	}
 
-	commsQuery := `SELECT id, author, content, post_id FROM comments WHERE post_id = $1`
-	ch := make(chan chComments)
-	retrieveReplies(ctx, r.db, 0, ch, commsQuery, id)
-	comments := <-ch
-	post.Comments = comments.comms
+	commsQuery := "SELECT id, author, content, post_id FROM comments WHERE post_id = $1"
+	for comment := range retrieveComments(ctx, r.db, commsQuery, id) {
+		post.Comments = append(post.Comments, comment)
+	}
 
 	return post, nil
 }
 
-type chComments struct {
-	idx   int
-	comms []*model.Comment
-}
+func retrieveComments(ctx context.Context, db *sqlx.DB, query string, args ...any) <-chan *model.Comment {
+	ch := make(chan *model.Comment)
+	go func() {
+		defer close(ch)
+		var comments []*model.Comment
+		if err := db.SelectContext(ctx, &comments, query, args...); err != nil && err != sql.ErrNoRows {
+			return
+		}
 
-func retrieveReplies(ctx context.Context, db *sqlx.DB, replyIdx int, ch chan chComments, query string, args ...any) {
-	var replies []*model.Comment
-	if err := db.SelectContext(ctx, &replies, query, args...); err != nil && err != sql.ErrNoRows {
-		ch <- chComments{replyIdx, nil}
-		return
-	}
-
-	if len(replies) == 0 {
-		ch <- chComments{replyIdx, nil}
-		return
-	}
-
-	repliesCh := make(chan chComments, len(replies))
-	for i := range replies {
-		replQuery := "SELECT * FROM comment WHERE parent_comment_id = $1"
-		go retrieveReplies(ctx, db, i, repliesCh, replQuery, replies[i].ID.String())
-	}
-
-	for range replies {
-		reply := <-repliesCh
-		replies[reply.idx].Comments = reply.comms
-	}
-
-	ch <- chComments{replyIdx, replies}
+		var wg sync.WaitGroup
+		wg.Add(len(comments))
+		for _, comment := range comments {
+			repliesQuery := "SELECT id, author, content, post_id FROM comments WHERE parent_comment_id = $1"
+			go func(c *model.Comment) {
+				defer wg.Done()
+				for reply := range retrieveComments(ctx, db, repliesQuery, c.ID) {
+					c.Comments = append(c.Comments, reply)
+				}
+				ch <- c
+			}(comment)
+		}
+		wg.Wait()
+	}()
+	return ch
 }
