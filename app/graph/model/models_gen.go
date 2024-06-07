@@ -21,3 +21,6 @@ type NewPost struct {
 
 type Query struct {
 }
+
+type Subscription struct {
+}

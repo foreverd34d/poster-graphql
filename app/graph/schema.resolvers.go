@@ -33,7 +33,18 @@ func (r *mutationResolver) CreatePost(ctx context.Context, input model.NewPost) 
 
 // CreateComment is the resolver for the createComment field.
 func (r *mutationResolver) CreateComment(ctx context.Context, input model.NewComment) (*model.Comment, error) {
-	return r.service.CreateComment(ctx, input)
+	comment, err := r.service.CreateComment(ctx, input)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, observer := range r.postObservers {
+		if comment.PostID != nil && comment.PostID.String() == observer.PostID {
+			observer.Ch <- comment
+		}
+	}
+
+	return comment, nil
 }
 
 // Comments is the resolver for the comments field.
@@ -62,6 +73,28 @@ func (r *queryResolver) Post(ctx context.Context, id string) (*model.Post, error
 	return r.service.GetPostByID(ctx, id)
 }
 
+// CommentAdded is the resolver for the commentAdded field.
+func (r *subscriptionResolver) CommentAdded(ctx context.Context, postID string) (<-chan *model.Comment, error) {
+	newObserver := postObserver{
+		Ch: make(chan *model.Comment),
+		PostID: postID,
+	}
+
+	r.mu.Lock()
+	r.postObservers = append(r.postObservers, newObserver)
+	r.mu.Unlock()
+
+	id := len(r.postObservers) - 1
+	go func() {
+		<-ctx.Done()
+		r.mu.Lock()
+		r.postObservers = append(r.postObservers[:id], r.postObservers[:id+1]...)
+		r.mu.Unlock()
+	}()
+
+	return r.postObservers[id].Ch, nil
+}
+
 // Comment returns CommentResolver implementation.
 func (r *Resolver) Comment() CommentResolver { return &commentResolver{r} }
 
@@ -74,7 +107,11 @@ func (r *Resolver) Post() PostResolver { return &postResolver{r} }
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
+// Subscription returns SubscriptionResolver implementation.
+func (r *Resolver) Subscription() SubscriptionResolver { return &subscriptionResolver{r} }
+
 type commentResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type postResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
+type subscriptionResolver struct{ *Resolver }

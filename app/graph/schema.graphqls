@@ -35,8 +35,12 @@ type Mutation {
 }
 
 type Query {
-    posts(offset: Int = 0, limit: Int = 10): [Post!]!
-    post(id: String!): Post!
+    posts(offset: Int = 0, limit: Int = 10): [Post!]
+    post(id: String!): Post
+}
+
+type Subscription {
+    commentAdded(postID: String!): Comment
 }
 
 scalar UUID
